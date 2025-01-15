@@ -198,7 +198,7 @@ class Query(ExportableQueryMixin, graphene.ObjectType):
         parent_location = kwargs.get('parent_location')
         parent_location_level = kwargs.get('parent_location_level')
         if parent_location is not None and parent_location_level is not None:
-            filters.append(Query._get_location_filters(parent_location, parent_location_level))
+            filters.append(Query._get_individual_location_filters(parent_location, parent_location_level))
 
         query = IndividualGQLType.get_queryset(None, info)
         query = query.filter(*filters)
@@ -465,6 +465,14 @@ class Query(ExportableQueryMixin, graphene.ObjectType):
         for i in range(len(LocationConfig.location_types) - parent_location_level - 1):
             query_key = "parent__" + query_key
         query_key = "location__" + query_key
+        return Q(**{query_key: parent_location})
+
+    @staticmethod
+    def _get_individual_location_filters(parent_location, parent_location_level):
+        query_key = "uuid"
+        for i in range(len(LocationConfig.location_types) - parent_location_level - 1):
+            query_key = "parent__" + query_key
+        query_key = "groupindividuals__group__location__" + query_key
         return Q(**{query_key: parent_location})
 
 
