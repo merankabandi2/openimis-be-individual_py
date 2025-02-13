@@ -52,6 +52,10 @@ class IndividualService(BaseService, UpdateCheckerLogicServiceMixin, DeleteCheck
     def create(self, obj_data):
         return super().create(obj_data)
 
+    def create_update_task(self, obj_data):
+        self._update_json_ext(obj_data)
+        return super().create_update_task(obj_data)
+
     @register_service_signal('individual_service.update')
     def update(self, obj_data):
         self._update_json_ext(obj_data)
@@ -111,18 +115,19 @@ class IndividualService(BaseService, UpdateCheckerLogicServiceMixin, DeleteCheck
         pass
 
     def _update_json_ext(self, obj_data):
-        if not obj_data or 'json_ext' not in obj_data:
+        if not obj_data or 'json_ext' not in obj_data or 'location_id' not in obj_data:
             return
 
         json_ext = obj_data['json_ext']
         if not json_ext:
             return
 
-        for field in ('first_name', 'last_name', 'dob'):
-            individual_field_value = obj_data.get(field)
-            json_ext_value = json_ext.get(field)
-            if json_ext_value and json_ext_value != individual_field_value:
-                json_ext[field] = individual_field_value
+        location_id = obj_data['location_id']
+        if location_id:
+            location = Location.objects.get(id=location_id)
+            json_ext['location_str'] = str(location)
+        else:
+            json_ext['location_str'] = None
 
         obj_data['json_ext'] = json_ext
 

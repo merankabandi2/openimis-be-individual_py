@@ -43,7 +43,7 @@ class ProcessImportIndividualsWorkflowTest(TestCase):
 
     def setUp(self):
         self.user = create_test_interactive_user(username="admin")
-        self.user_uuid = self.user.id
+        self.user_uuid = str(self.user.id)
 
         self.upload = IndividualDataSourceUpload(
             source_name='csv',
@@ -51,7 +51,7 @@ class ProcessImportIndividualsWorkflowTest(TestCase):
             status="PENDING",
         )
         self.upload.save(user=self.user)
-        self.upload_uuid = self.upload.id
+        self.upload_uuid = str(self.upload.id)
 
         upload_record = IndividualDataUploadRecords(
             data_upload=self.upload,
