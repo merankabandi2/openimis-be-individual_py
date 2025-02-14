@@ -25,12 +25,18 @@ class ProcessImportIndividualsWorkflowTest(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        # Patch validate_dataframe_headers as it is already tested separately
+        # Patch methods already tested separately
         cls.validate_headers_patcher = patch(
             "individual.workflows.utils.BasePythonWorkflowExecutor.validate_dataframe_headers",
             lambda self: None
         )
         cls.validate_headers_patcher.start()
+
+        cls.task_patcher = patch(
+            "individual.services.sync_individuals_to_opensearch.delay",
+            lambda self: None
+        )
+        cls.task_patcher.start()
 
         cls.schema_patcher = patch("individual.apps.IndividualConfig.individual_schema", "{}")
         cls.schema_patcher.start()
@@ -38,6 +44,7 @@ class ProcessImportIndividualsWorkflowTest(TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.validate_headers_patcher.stop()
+        cls.task_patcher.stop()
         cls.schema_patcher.stop()
         super().tearDownClass()
 
