@@ -2,6 +2,7 @@ from django.test import TestCase
 from unittest.mock import patch, MagicMock
 from core.test_helpers import create_test_interactive_user
 from individual.workflows.utils import SqlProcedurePythonWorkflow, PythonWorkflowHandlerException
+from opensearch_reports.service import BaseSyncDocument
 import pandas as pd
 import json
 import uuid
@@ -26,10 +27,15 @@ class TestBasePythonWorkflowExecutor(TestCase):
             json.dumps(self.individual_schema)
         ).start()
 
+        # patch opensearch document update so it doesn't try to connect & sync
+        self.doc_update_patcher = patch.object(BaseSyncDocument, "update")
+        self.doc_update_patcher.start()
+
         self.executor = SqlProcedurePythonWorkflow(self.upload_id, self.user.id)
 
     def tearDown(self):
         patch.stopall()
+        super().tearDown()
 
     def test_validate_dataframe_headers_valid(self):
         self.executor.df = pd.DataFrame(columns=['first_name', 'last_name', 'dob', 'id', 'location_name', 'location_code'])

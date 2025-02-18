@@ -4,20 +4,24 @@ import os
 import pandas as pd
 import uuid
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db.models.query import QuerySet
 from django.test import TestCase
 from individual.services import IndividualImportService
 from individual.models import (
+    Individual,
     IndividualDataSource,
     IndividualDataSourceUpload,
     IndividualDataUploadRecords,
 )
 from individual.tests.test_helpers import (
     generate_random_string,
+    create_individual,
     create_sp_role,
     create_test_village,
     create_test_interactive_user,
     assign_user_districts,
 )
+from opensearch_reports.service import BaseSyncDocument
 from unittest.mock import MagicMock, patch
 from core.utils import filter_validity
 from core.models.user import Role
@@ -37,9 +41,7 @@ def count_csv_records(file_path):
 class IndividualImportServiceTest(TestCase):
 
     @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-
+    def setUpTestData(cls):
         admin_role = Role.objects.filter(is_system=64, *filter_validity()).first()
         cls.admin_user = create_test_interactive_user(
             username="superuserme", roles=[admin_role.id]
@@ -50,8 +52,6 @@ class IndividualImportServiceTest(TestCase):
         with open(cls.csv_file_path, 'rb') as f:
             cls.csv_content = f.read()
 
-    @classmethod
-    def setUpTestData(cls):
         cls.village_a = create_test_village({
             'name': 'Washington DC',
             'code': '202',
@@ -60,6 +60,25 @@ class IndividualImportServiceTest(TestCase):
             'name': 'Fairfax',
             'code': '703'
         })
+
+        cls.upload = IndividualDataSourceUpload(
+            source_name="Test Upload.csv",
+            source_type="individual import",
+        )
+        cls.upload.save(user=cls.admin_user)
+        cls.individual1 = create_individual(cls.admin_user.username)
+        cls.individual2 = create_individual(cls.admin_user.username)
+
+        source1 = IndividualDataSource(individual=cls.individual1, upload=cls.upload)
+        source1.save(user=cls.admin_user)
+        source2 = IndividualDataSource(individual=cls.individual2, upload=cls.upload)
+        source2.save(user=cls.admin_user)
+
+        cls.empty_upload = IndividualDataSourceUpload(
+            source_name="no-data.csv",
+            source_type="individual import",
+        )
+        cls.empty_upload.save(user=cls.admin_user)
 
 
     def test_import_individuals(self):
@@ -310,3 +329,21 @@ class IndividualImportServiceTest(TestCase):
                 "Location with name 'Fairfax' and code '703' is ambiguous, "
                 "because there are more than one location with this name and code found in the system."
             )
+
+    @patch.object(BaseSyncDocument, 'update')
+    def test_synchronize_data_for_reporting(self, mock_update):
+        service = IndividualImportService(self.admin_user)
+        service.synchronize_data_for_reporting(self.upload.id)
+
+        mock_update.assert_called()
+        args, kwargs = mock_update.call_args
+        self.assertIsInstance(args[0], QuerySet)
+        self.assertEqual(list(args[0].values_list('pk', flat=True)), [self.individual1.pk, self.individual2.pk])
+        self.assertEqual(args[1], 'index')
+
+    @patch.object(BaseSyncDocument, 'update')
+    def test_synchronize_data_for_reporting_no_individuals(self, mock_update):
+        service = IndividualImportService(self.admin_user)
+        service.synchronize_data_for_reporting(self.empty_upload.id)
+
+        mock_update.assert_not_called()

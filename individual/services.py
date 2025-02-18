@@ -14,6 +14,7 @@ from core.custom_filters import CustomFilterWizardStorage
 from core.models import User
 from core.services import BaseService
 from core.signals import register_service_signal
+from django.apps import apps
 from django.utils.translation import gettext as _
 from django.db.models import Q, OuterRef, Subquery, Count
 from individual.apps import IndividualConfig
@@ -25,7 +26,6 @@ from individual.models import (
     IndividualDataUploadRecords,
     IndividualDataSourceUpload
 )
-from individual.tasks import sync_individuals_to_opensearch
 from individual.utils import (
     load_dataframe,
     fetch_summary_of_valid_items,
@@ -589,7 +589,14 @@ class IndividualImportService:
         return {'success': True, 'data': validated_dataframe, 'summary_invalid_items': invalid_items}
 
     def synchronize_data_for_reporting(self, upload_id: uuid):
-        sync_individuals_to_opensearch.delay(upload_id)
+        if 'opensearch_reports' in apps.app_configs:
+            from individual.documents import IndividualDocument
+
+            individuals = Individual.objects.filter(individualdatasource__upload=upload_id)
+            if not individuals:
+                return
+
+            IndividualDocument().update(individuals, 'index')
 
     @staticmethod
     def process_chunk(
