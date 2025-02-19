@@ -338,7 +338,9 @@ class IndividualImportServiceTest(TestCase):
         mock_update.assert_called()
         args, kwargs = mock_update.call_args
         self.assertIsInstance(args[0], QuerySet)
-        self.assertEqual(list(args[0].values_list('pk', flat=True)), [self.individual1.pk, self.individual2.pk])
+        actual_sorted_pks = sorted(list(args[0].values_list('pk', flat=True)))
+        expected_sorted_pks = sorted([self.individual1.pk, self.individual2.pk])
+        self.assertEqual(actual_sorted_pks, expected_sorted_pks)
         self.assertEqual(args[1], 'index')
 
     @patch.object(BaseSyncDocument, 'update')
