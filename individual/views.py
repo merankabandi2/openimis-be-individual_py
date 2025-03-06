@@ -1,5 +1,7 @@
 import logging
 import json
+import mimetypes
+import os
 
 import numpy as np
 import pandas as pd
@@ -21,6 +23,34 @@ from workflow.services import WorkflowService
 
 # Set up logging for the module
 logger = logging.getLogger(__name__)
+
+
+ALLOWED_EXTENSIONS = {".csv", ".xls", ".xlsx"}
+ALLOWED_MIME_TYPES = {
+    "text/csv",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+}
+
+mimetypes.add_type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".xlsx")
+mimetypes.add_type("application/vnd.ms-excel", ".xls")
+
+
+def is_valid_file(import_file):
+    """ Validate file extension and MIME type """
+    file_extension = os.path.splitext(import_file.name)[1].lower()
+    if file_extension not in ALLOWED_EXTENSIONS:
+        return False, "Invalid file type. Allowed: .csv, .xls, .xlsx"
+
+    file_mime_type, _ = mimetypes.guess_type(import_file.name)
+    if not file_mime_type:
+        return False, "Could not determine file type"
+
+    if file_mime_type not in ALLOWED_MIME_TYPES:
+        return False, f"Invalid MIME type: {file_mime_type}"
+
+    return True, None
+
 
 # Function to retrieve global schema fields from IndividualConfig
 def get_global_schema_fields():
@@ -69,6 +99,11 @@ def import_individuals(request):
         user = request.user
         # Resolve the arguments and handle file upload
         import_file, workflow, group_aggregation_column = _resolve_import_individuals_args(request)
+
+        is_valid, error_message = is_valid_file(import_file)
+        if not is_valid:
+            return Response({'success': False, 'error': error_message}, status=status.HTTP_400_BAD_REQUEST)
+
         _handle_file_upload(import_file)
         # Import individual data using the service
         result = IndividualImportService(user).import_individuals(import_file, workflow, group_aggregation_column)
