@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from django.db.models import Q
 from django.http import StreamingHttpResponse
+from django.utils.translation import gettext as _
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -40,14 +41,14 @@ def is_valid_file(import_file):
     """ Validate file extension and MIME type """
     file_extension = os.path.splitext(import_file.name)[1].lower()
     if file_extension not in ALLOWED_EXTENSIONS:
-        return False, "Invalid file type. Allowed: .csv, .xls, .xlsx"
+        return False, _("Invalid file type. Allowed: .csv, .xls, .xlsx")
 
     file_mime_type, _ = mimetypes.guess_type(import_file.name)
     if not file_mime_type:
-        return False, "Could not determine file type"
+        return False, _("Could not determine file type")
 
     if file_mime_type not in ALLOWED_MIME_TYPES:
-        return False, f"Invalid MIME type: {file_mime_type}"
+        return False, _(f"Invalid MIME type: {file_mime_type}")
 
     return True, None
 
