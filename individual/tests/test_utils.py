@@ -42,3 +42,16 @@ class UtilsTest(TestCase):
         self.assertEqual(df.at[0, "name"], 'Alice')
         self.assertEqual(df.at[1, "name"], '')
         self.assertIsNone(df.at[2, "name"])
+
+    def test_load_dataframe_location_code_as_big_number(self):
+        """Ensure 'location_code' remains a string even when given a large numeric value."""
+        sources = [
+            IndividualDataSource(id=1, json_ext={"name": "Alice", "location_code": 11223344}),
+            IndividualDataSource(id=2, json_ext={"name": "Bob", "location_code": "99887766"})
+        ]
+        df = load_dataframe(sources)
+
+        self.assertEqual(len(df), 2)
+        self.assertIn("location_code", df.columns)
+        self.assertEqual(df.at[0, "location_code"], "11223344")
+        self.assertEqual(df.at[1, "location_code"], "99887766")

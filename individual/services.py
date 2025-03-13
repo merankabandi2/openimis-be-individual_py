@@ -697,7 +697,7 @@ class IndividualImportService:
         result = {
             'field_name': 'location_name',
         }
-        if (location_name is None or location_name == "") and (location_code is None or location_code == ""):
+        if (pd.isna(location_name) or location_name == "") and (pd.isna(location_code) or location_code == ""):
             result['success'] = True
         elif loc_name_code_district_ids_from_db is None and user_allowed_loc_ids is None:
             result['success'] = True
