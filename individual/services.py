@@ -14,6 +14,7 @@ from core.custom_filters import CustomFilterWizardStorage
 from core.models import User
 from core.services import BaseService
 from core.signals import register_service_signal
+from django.apps import apps
 from django.utils.translation import gettext as _
 from django.db.models import Q, OuterRef, Subquery, Count
 from individual.apps import IndividualConfig
@@ -588,7 +589,14 @@ class IndividualImportService:
         return {'success': True, 'data': validated_dataframe, 'summary_invalid_items': invalid_items}
 
     def synchronize_data_for_reporting(self, upload_id: uuid):
-        self._synchronize_individual(upload_id)
+        if 'opensearch_reports' in apps.app_configs:
+            from individual.documents import IndividualDocument
+
+            individuals = Individual.objects.filter(individualdatasource__upload=upload_id)
+            if not individuals:
+                return
+
+            IndividualDocument().update(individuals, 'index')
 
     @staticmethod
     def process_chunk(
@@ -857,22 +865,6 @@ class IndividualImportService:
                 record.data_upload.id,
                 self.user
             ).run_workflow()
-
-    def _synchronize_individual(self, upload_id):
-        individuals_to_update = Individual.objects.filter(
-            individualdatasource__upload=upload_id
-        )
-        for individual in individuals_to_update:
-            synch_status = {
-                'report_synch': 'true',
-                'version': individual.version + 1,
-            }
-            if individual.json_ext:
-                individual.json_ext.update(synch_status)
-            else:
-                individual.json_ext = synch_status
-            individual.save(user=self.user.user)
-
 
 class IndividualTaskCreatorService:
 
