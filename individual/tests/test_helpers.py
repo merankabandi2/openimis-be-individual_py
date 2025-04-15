@@ -111,7 +111,8 @@ class IndividualGQLTestCase(openIMISGraphQLTestCase):
         super().setUpClass()
 
         cls.admin_user = create_test_interactive_user(username="adminSeesEveryone")
-        cls.admin_token = BaseTestContext(user=cls.admin_user).get_jwt()
+        cls.admin_context = BaseTestContext(user=cls.admin_user)
+        cls.admin_token = cls.admin_context.get_jwt()
 
         cls.village_a = create_test_village({
             'name': 'Village A',
@@ -139,8 +140,8 @@ class IndividualGQLTestCase(openIMISGraphQLTestCase):
 
         cls.med_enroll_officer = create_test_interactive_user(
             username="medEONoRight", roles=[1]) # 1 is the med enrollment officer role
-        cls.med_enroll_officer_token = get_token(
-            cls.med_enroll_officer, BaseTestContext(user=cls.med_enroll_officer))
+        cls.med_enroll_officer_context = BaseTestContext(user=cls.med_enroll_officer)
+        cls.med_enroll_officer_token = cls.med_enroll_officer_context.get_jwt()
 
     # overriding helper method from core to allow errors
     def get_mutation_result(self, mutation_uuid, token, internal=False):
