@@ -891,7 +891,7 @@ class IndividualTaskCreatorService:
             'source_name': upload_record.data_upload.source_name,
             'workflow': upload_record.workflow,
             'percentage_of_invalid_items': self.__calculate_percentage_of_invalid_items(upload_id),
-            'data_upload_id': upload_id,
+            'data_upload_id': str(upload_id),
             'group_aggregation_column':
                 upload_record.json_ext.get('group_aggregation_column')
                 if isinstance(upload_record.json_ext, dict)
