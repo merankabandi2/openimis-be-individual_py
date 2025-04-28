@@ -86,7 +86,11 @@ class IndividualService(BaseService, UpdateCheckerLogicServiceMixin, DeleteCheck
     @register_service_signal('individual_service.select_individuals_to_benefit_plan')
     def select_individuals_to_benefit_plan(self, custom_filters, benefit_plan_id, status, user):
         individual_query = Individual.objects.filter(is_deleted=False)
-        subquery = GroupIndividual.objects.filter(individual=OuterRef('pk')).values('individual')
+        subquery = GroupIndividual.objects.filter(
+            individual=OuterRef('pk')
+        ).exclude(
+            is_deleted=True
+        ).values('individual')
         individual_query_with_filters = CustomFilterWizardStorage.build_custom_filters_queryset(
             "individual",
             "Individual",
