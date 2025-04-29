@@ -12,6 +12,7 @@ from individual.models import (
 )
 from individual.workflows.base_individual_upload import process_import_individuals_workflow
 from individual.tests.test_helpers import create_test_village
+from opensearch_reports.service import BaseSyncDocument
 from unittest.mock import patch
 from unittest import skipIf
 
@@ -25,20 +26,22 @@ class ProcessImportIndividualsWorkflowTest(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        # Patch validate_dataframe_headers as it is already tested separately
+        # Patch methods already tested separately
         cls.validate_headers_patcher = patch(
             "individual.workflows.utils.BasePythonWorkflowExecutor.validate_dataframe_headers",
             lambda self: None
         )
         cls.validate_headers_patcher.start()
 
+        cls.doc_update_patcher = patch.object(BaseSyncDocument, "update")
+        cls.doc_update_patcher.start()
+
         cls.schema_patcher = patch("individual.apps.IndividualConfig.individual_schema", "{}")
         cls.schema_patcher.start()
 
     @classmethod
     def tearDownClass(cls):
-        cls.validate_headers_patcher.stop()
-        cls.schema_patcher.stop()
+        patch.stopall()
         super().tearDownClass()
 
     def setUp(self):
