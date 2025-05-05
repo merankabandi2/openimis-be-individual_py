@@ -192,7 +192,11 @@ class Query(ExportableQueryMixin, graphene.ObjectType):
 
         filter_not_attached_to_group = kwargs.get("filterNotAttachedToGroup")
         if filter_not_attached_to_group:
-            subquery = GroupIndividual.objects.filter(individual=OuterRef('pk')).values('individual')
+            subquery = GroupIndividual.objects.filter(
+                individual=OuterRef('pk')
+            ).exclude(
+                is_deleted=True
+            ).values('individual')
             filters.append(~Q(pk__in=Subquery(subquery)))
 
         parent_location = kwargs.get('parent_location')
@@ -217,7 +221,11 @@ class Query(ExportableQueryMixin, graphene.ObjectType):
     def resolve_individual_enrollment_summary(self, info, **kwargs):
         Query._check_permissions(info.context.user,
                                  IndividualConfig.gql_individual_search_perms)
-        subquery = GroupIndividual.objects.filter(individual=OuterRef('pk')).values('individual')
+        subquery = GroupIndividual.objects.filter(
+            individual=OuterRef('pk')
+        ).exclude(
+            is_deleted=True
+        ).values('individual')
         query = Individual.objects.filter(is_deleted=False)
         custom_filters = kwargs.get("customFilters", None)
         benefit_plan_id = kwargs.get("benefitPlanId", None)
