@@ -7,6 +7,9 @@ from individual.tests.test_helpers import (
     IndividualGQLTestCase,
 )
 from location.test_helpers import create_test_village
+from social_protection.tests.test_helpers import (
+  create_benefit_plan
+)
 
 
 class IndividualGQLQueryTest(IndividualGQLTestCase):
@@ -15,7 +18,7 @@ class IndividualGQLQueryTest(IndividualGQLTestCase):
     def setUpClass(cls):
         super().setUpClass()
 
-        cls.individual_a, cls.group_a, _ = create_group_with_individual(
+        cls.individual_a, cls.group_a, cls.group_individual_a = create_group_with_individual(
             cls.admin_user.username,
             group_override={'location': cls.village_a},
             individual_override={'location': cls.village_a},
@@ -887,3 +890,51 @@ class IndividualGQLQueryTest(IndividualGQLTestCase):
             self.assertResponseNoErrors(response)
             content = json.loads(response.content)
             self.assertEqual(content['data']['groupIndividualHistory']['totalCount'], 0)
+
+    def test_individual_enrollment_summary_includes_deleted_groups(self):
+        benefit_plan = create_benefit_plan(self.admin_user.username, payload_override={
+            'type': "INDIVIDUAL"
+        })
+
+        # Verify the individual is NOT counted in the enrollment summary while the group exists
+        query_str = '''query {
+          individualEnrollmentSummary (benefitPlanId: "''' + str(benefit_plan.id) + '''") {
+            numberOfSelectedIndividuals
+            totalNumberOfIndividuals
+            numberOfIndividualsAssignedToProgramme
+            numberOfIndividualsNotAssignedToProgramme
+          }
+        }'''
+
+        response = self.query(
+            query_str,
+            headers={"HTTP_AUTHORIZATION": f"Bearer {self.admin_token}"}
+        )
+        self.assertResponseNoErrors(response)
+
+        content = json.loads(response.content)
+        summary = content['data']['individualEnrollmentSummary']
+
+        self.assertEqual(summary['numberOfSelectedIndividuals'], '2')
+        self.assertEqual(summary['totalNumberOfIndividuals'], '5')
+        self.assertEqual(summary['numberOfIndividualsAssignedToProgramme'], '0')
+        self.assertEqual(summary['numberOfIndividualsNotAssignedToProgramme'], '2')
+
+        # Delete the group and groupindividual
+        self.group_a.delete(username=self.admin_user.username)
+        self.group_individual_a.delete(username=self.admin_user.username)
+
+        # Verify the individual is now counted in the enrollment summary
+        response = self.query(
+            query_str,
+            headers={"HTTP_AUTHORIZATION": f"Bearer {self.admin_token}"}
+        )
+        self.assertResponseNoErrors(response)
+
+        content = json.loads(response.content)
+        summary = content['data']['individualEnrollmentSummary']
+
+        self.assertEqual(summary['numberOfSelectedIndividuals'], '3')
+        self.assertEqual(summary['totalNumberOfIndividuals'], '5')
+        self.assertEqual(summary['numberOfIndividualsAssignedToProgramme'], '0')
+        self.assertEqual(summary['numberOfIndividualsNotAssignedToProgramme'], '3')

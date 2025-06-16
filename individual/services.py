@@ -86,7 +86,11 @@ class IndividualService(BaseService, UpdateCheckerLogicServiceMixin, DeleteCheck
     @register_service_signal('individual_service.select_individuals_to_benefit_plan')
     def select_individuals_to_benefit_plan(self, custom_filters, benefit_plan_id, status, user):
         individual_query = Individual.objects.filter(is_deleted=False)
-        subquery = GroupIndividual.objects.filter(individual=OuterRef('pk')).values('individual')
+        subquery = GroupIndividual.objects.filter(
+            individual=OuterRef('pk')
+        ).exclude(
+            is_deleted=True
+        ).values('individual')
         individual_query_with_filters = CustomFilterWizardStorage.build_custom_filters_queryset(
             "individual",
             "Individual",
@@ -891,7 +895,7 @@ class IndividualTaskCreatorService:
             'source_name': upload_record.data_upload.source_name,
             'workflow': upload_record.workflow,
             'percentage_of_invalid_items': self.__calculate_percentage_of_invalid_items(upload_id),
-            'data_upload_id': upload_id,
+            'data_upload_id': str(upload_id),
             'group_aggregation_column':
                 upload_record.json_ext.get('group_aggregation_column')
                 if isinstance(upload_record.json_ext, dict)
