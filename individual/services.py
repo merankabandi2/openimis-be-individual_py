@@ -543,13 +543,13 @@ class GroupAndGroupIndividualAlignmentService:
 class IndividualImportService:
     import_loaders = {
         # .csv
-        'text/csv': lambda f: pd.read_csv(f),
+        'text/csv': lambda f: pd.read_csv(f, dtype={'location_code': 'str'}),
         # .xlsx
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': lambda f: pd.read_excel(f),
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': lambda f: pd.read_excel(f, dtype={'location_code': 'str'}),
         # .xls
-        'application/vnd.ms-excel': lambda f: pd.read_excel(f),
+        'application/vnd.ms-excel': lambda f: pd.read_excel(f, dtype={'location_code': 'str'}),
         # .ods
-        'application/vnd.oasis.opendocument.spreadsheet': lambda f: pd.read_excel(f),
+        'application/vnd.oasis.opendocument.spreadsheet': lambda f: pd.read_excel(f, dtype={'location_code': 'str'}),
     }
 
     def __init__(self, user):
