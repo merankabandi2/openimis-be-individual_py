@@ -44,7 +44,7 @@ BEGIN
     WHERE upload_id = current_upload_id AND individual_id IS NULL AND "isDeleted" = False AND NOT "Json_ext" ? 'dob';
     SELECT ARRAY_AGG("UUID") INTO failing_entries_invalid_json
     FROM individual_individualdatasource
-    WHERE upload_id = current_upload_id AND individual_id IS NULL AND "isDeleted" = False AND NOT validate_json_schema(json_schema, "Json_ext");
+    WHERE upload_id = current_upload_id AND individual_id IS NULL AND "isDeleted" = False;
     -- If any entries do not meet the criteria or missing required fields, set the error message in the upload table and do not proceed further
     IF failing_entries_invalid_json IS NOT NULL OR failing_entries_first_name IS NOT NULL OR failing_entries_last_name IS NOT NULL OR failing_entries_dob IS NOT NULL THEN
         UPDATE individual_individualdatasourceupload
@@ -75,8 +75,8 @@ BEGIN
                    loc."LocationId"
             FROM individual_individualdatasource AS ds
             LEFT JOIN "tblLocations" AS loc
-                    ON loc."LocationName" = ds."Json_ext"->>'location_name'
-                    AND loc."LocationCode" = ds."Json_ext"->>'location_code'
+                    ON UPPER(loc."LocationName") = UPPER(ds."Json_ext"->>'location_name')
+                    AND UPPER(loc."LocationCode") = UPPER(ds."Json_ext"->>'location_code')
                     AND loc."LocationType"='V'
                     AND loc."ValidityTo" IS NULL
             WHERE ds.upload_id = current_upload_id

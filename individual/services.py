@@ -683,7 +683,7 @@ class IndividualImportService:
         unique_tuples = df[['location_name', 'location_code']].drop_duplicates()
         query = Q()
         for _, row in unique_tuples.iterrows():
-            query |= Q(name=row['location_name'], code=row['location_code'])
+            query |= Q(name__iexact=row['location_name'], code__iexact=row['location_code'])
         locations = Location.objects.filter(type="V", *filter_validity()).filter(query)
         return {(loc.name, loc.code): loc.parent.parent.id for loc in locations}
 

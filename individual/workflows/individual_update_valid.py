@@ -90,8 +90,8 @@ BEGIN
                 "Json_ext" = ids."Json_ext"
             FROM individual_individualdatasource ids 
             LEFT JOIN "tblLocations" AS loc
-                    ON loc."LocationName" = ids."Json_ext"->>'location_name'
-                    AND loc."LocationCode" = ids."Json_ext"->>'location_code'
+                    ON UPPER(loc."LocationName") = UPPER(ids."Json_ext"->>'location_name')
+                    AND UPPER(loc."LocationCode") = UPPER(ids."Json_ext"->>'location_code')
                     AND loc."LocationType"='V'
                     AND loc."ValidityTo" IS NULL
             WHERE individual_individual."UUID" = (ids."Json_ext" ->> 'ID')::UUID
