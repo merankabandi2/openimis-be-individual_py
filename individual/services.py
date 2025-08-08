@@ -629,8 +629,8 @@ class IndividualImportService:
             if 'location_name' in chunk.columns:
                 field_validation['validations']['location_name'] = (
                     IndividualImportService._validate_location(
-                        row.location_name,
-                        row.location_code,
+                        row.location_name.upper(),
+                        row.location_code.upper(),
                         loc_name_code_district_ids_from_db,
                         user_allowed_loc_ids,
                         duplicate_village_name_code_tuples,
@@ -685,7 +685,7 @@ class IndividualImportService:
         for _, row in unique_tuples.iterrows():
             query |= Q(name__iexact=row['location_name'], code__iexact=row['location_code'])
         locations = Location.objects.filter(type="V", *filter_validity()).filter(query)
-        return {(loc.name, loc.code): loc.parent.parent.id for loc in locations}
+        return {(loc.name.upper(), loc.code.upper()): loc.parent.parent.id for loc in locations}
 
     @staticmethod
     def _query_duplicate_village_name_code():
