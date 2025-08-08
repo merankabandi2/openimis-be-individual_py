@@ -44,7 +44,7 @@ BEGIN
     WHERE upload_id = current_upload_id AND individual_id IS NULL AND "isDeleted" = False AND NOT "Json_ext" ? 'dob';
     SELECT ARRAY_AGG("UUID") INTO failing_entries_invalid_json
     FROM individual_individualdatasource
-    WHERE upload_id = current_upload_id AND individual_id IS NULL AND "isDeleted" = False;
+    WHERE upload_id = current_upload_id AND individual_id IS NULL AND "isDeleted" = False AND NOT validate_json_schema(json_schema, "Json_ext");
     -- If any entries do not meet the criteria or missing required fields, set the error message in the upload table and do not proceed further
     IF failing_entries_invalid_json IS NOT NULL OR failing_entries_first_name IS NOT NULL OR failing_entries_last_name IS NOT NULL OR failing_entries_dob IS NOT NULL THEN
         UPDATE individual_individualdatasourceupload
