@@ -3,6 +3,9 @@ import json
 import random
 import string
 import time
+from unittest.mock import patch
+
+from django.apps import apps
 from core.models import ModuleConfiguration, Role, RoleRight
 from core.module_config_registry import reload_module_configuration
 from core.models.base_mutation import MutationLog
@@ -31,6 +34,26 @@ def reload_individual_config(raw_config):
     reload_module_configuration(
         ModuleConfiguration(module='individual', layer='be', config=raw_config)
     )
+
+
+class _NoPatch:
+    def start(self):
+        return None
+
+    def stop(self):
+        return None
+
+
+def patch_opensearch_document_update():
+    """A patcher of the OpenSearch document sync (``BaseSyncDocument.update``).
+
+    The module syncs documents only when opensearch_reports is an installed
+    app; without it there is nothing to patch and the patcher does nothing.
+    """
+    if not apps.is_installed('opensearch_reports'):
+        return _NoPatch()
+    from opensearch_reports.service import BaseSyncDocument
+    return patch.object(BaseSyncDocument, 'update')
 
 
 def generate_random_string(length=6):
