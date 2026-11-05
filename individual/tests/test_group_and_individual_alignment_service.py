@@ -232,3 +232,55 @@ class GroupJsonExtAlignmentTest(TestCase):
         add_individual_to_group(self.username, member, self.group, is_head=False)
 
         self.assertEqual(self._refreshed_json_ext()['id'], 'individual-7')
+
+    def test_empty_list_of_keys_copied_from_head_copies_nothing(self):
+        self.head.json_ext = {**self.head.json_ext, 'ci': '123', 'head_new': 'from-head'}
+        self.head.save(username=self.username)
+
+        with patch.object(IndividualConfig, 'group_json_ext_keys_copied_from_head', []):
+            member = create_individual(self.username, {'first_name': 'Member'})
+            add_individual_to_group(self.username, member, self.group, is_head=False)
+
+        json_ext = self._refreshed_json_ext()
+        self.assertNotIn('ci', json_ext)
+        self.assertNotIn('head_new', json_ext)
+        self.assertEqual(json_ext['head_id'], str(self.head.id))
+        self.assertIn(str(member.id), json_ext['members'])
+        self.assert_household_keys_kept(json_ext)
+
+    def test_only_the_listed_keys_are_copied_from_head(self):
+        self.head.json_ext = {**self.head.json_ext, 'ci': '123', 'head_new': 'from-head'}
+        self.head.save(username=self.username)
+
+        with patch.object(IndividualConfig, 'group_json_ext_keys_copied_from_head', ['head_new']):
+            member = create_individual(self.username, {'first_name': 'Member'})
+            add_individual_to_group(self.username, member, self.group, is_head=False)
+
+        json_ext = self._refreshed_json_ext()
+        self.assertEqual(json_ext['head_new'], 'from-head')
+        self.assertNotIn('ci', json_ext)
+        self.assert_household_keys_kept(json_ext)
+
+    def test_a_key_listed_as_copied_and_as_not_copied_keeps_the_group_value(self):
+        self.group.json_ext.update({'shared': 'household'})
+        self.group.save(username=self.username)
+        self.head.json_ext = {**self.head.json_ext, 'shared': 'head'}
+        self.head.save(username=self.username)
+
+        with patch.object(IndividualConfig, 'group_json_ext_keys_copied_from_head', ['shared']), \
+                patch.object(IndividualConfig, 'group_json_ext_keys_not_copied_from_head', ['shared']):
+            member = create_individual(self.username, {'first_name': 'Member'})
+            add_individual_to_group(self.username, member, self.group, is_head=False)
+
+        self.assertEqual(self._refreshed_json_ext()['shared'], 'household')
+
+    def test_every_head_key_is_copied_when_no_list_is_configured(self):
+        self.head.json_ext = {**self.head.json_ext, 'head_new': 'from-head'}
+        self.head.save(username=self.username)
+
+        with patch.object(IndividualConfig, 'group_json_ext_keys_copied_from_head', None), \
+                patch.object(IndividualConfig, 'group_json_ext_keys_not_copied_from_head', []):
+            member = create_individual(self.username, {'first_name': 'Member'})
+            add_individual_to_group(self.username, member, self.group, is_head=False)
+
+        self.assertEqual(self._refreshed_json_ext()['head_new'], 'from-head')

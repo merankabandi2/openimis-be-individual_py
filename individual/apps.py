@@ -62,6 +62,9 @@ DEFAULT_CONFIG = {
     # Group json_ext keys that keep the group's value when the head individual's
     # json_ext is copied onto the group (GroupAndGroupIndividualAlignmentService).
     "group_json_ext_keys_not_copied_from_head": [],
+    # Head json_ext keys copied onto the group when a group member link is saved or deleted.
+    # None copies every key; a list copies only its keys, so an empty list copies none.
+    "group_json_ext_keys_copied_from_head": None,
 }
 
 
@@ -106,6 +109,7 @@ class IndividualConfig(AppConfig):
     individual_masking_enabled = None
     individual_base_fields = None
     group_json_ext_keys_not_copied_from_head = None
+    group_json_ext_keys_copied_from_head = None
 
     def ready(self):
         from core.models import ModuleConfiguration
