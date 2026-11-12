@@ -449,10 +449,13 @@ class GroupAndGroupIndividualAlignmentService:
         changes_to_save = {}
         # The head's json_ext is copied onto the group: a head value set to None clears the
         # group's value. Keys the head lacks are the household's own and are kept, as are
-        # the keys listed in group_json_ext_keys_not_copied_from_head.
+        # the keys listed in group_json_ext_keys_not_copied_from_head and, when
+        # group_json_ext_keys_copied_from_head is a list, the keys outside that list.
+        keys_copied = IndividualConfig.group_json_ext_keys_copied_from_head
+        keys_copied = None if keys_copied is None else set(keys_copied)
         keys_not_copied = set(IndividualConfig.group_json_ext_keys_not_copied_from_head or ())
         for key, value in head_json_ext.items():
-            if key in keys_not_copied:
+            if key in keys_not_copied or (keys_copied is not None and key not in keys_copied):
                 continue
             if value is None:
                 group.json_ext.pop(key, None)
