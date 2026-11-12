@@ -183,3 +183,119 @@ class GroupJsonExtFromHeadTest(TestCase):
         json_ext = self.group_json_ext()
         self.assertEqual(json_ext['household_size'], 5)
         self.assertEqual(json_ext['household_type'], 'RURAL')
+
+    def test_an_empty_list_of_keys_copied_from_head_copies_nothing(self):
+        self.head.json_ext = {
+            **self.head.json_ext, 'head_only': 'updated', 'ci': '123', 'household_type': None,
+        }
+        self.head.save(username=self.username)
+        with mock.patch.object(IndividualConfig, 'group_json_ext_keys_copied_from_head', [], create=True):
+            self.add_member()
+
+        json_ext = self.group_json_ext()
+        self.assertEqual(len(json_ext['members']), 2)
+        self.assertEqual(json_ext['head_only'], 'from-head')
+        self.assertNotIn('ci', json_ext)
+        for key, value in self.household_keys.items():
+            self.assertEqual(json_ext.get(key), value, key)
+
+    def test_only_the_listed_keys_are_copied_from_head(self):
+        self.head.json_ext = {**self.head.json_ext, 'ci': '123', 'household_size': 6}
+        self.head.save(username=self.username)
+        with mock.patch.object(
+            IndividualConfig, 'group_json_ext_keys_copied_from_head', ['household_size'], create=True,
+        ):
+            self.add_member()
+
+        json_ext = self.group_json_ext()
+        self.assertEqual(json_ext['household_size'], 6)
+        self.assertNotIn('ci', json_ext)
+        self.assertEqual(json_ext['household_type'], 'RURAL')
+
+    def test_a_key_listed_as_copied_and_as_not_copied_keeps_the_group_value(self):
+        self.head.json_ext = {**self.head.json_ext, 'household_size': 6}
+        self.head.save(username=self.username)
+        with mock.patch.object(
+            IndividualConfig, 'group_json_ext_keys_copied_from_head', ['household_size'], create=True,
+        ), mock.patch.object(
+            IndividualConfig, 'group_json_ext_keys_not_copied_from_head', ['household_size'], create=True,
+        ):
+            self.add_member()
+
+        self.assertEqual(self.group_json_ext()['household_size'], 5)
+
+
+class GroupJsonExtNothingCopiedFromHeadTest(TestCase):
+    """Membership changes with group_json_ext_keys_copied_from_head set to []."""
+    household_keys = {'household_size': 5, 'household_type': 'RURAL', 'social_id': 'HH-1'}
+    head_keys = {'ci': '4/111/222/33', 'telephone': '79000000', 'social_id': 'IND-7', 'household_type': None}
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = LogInHelper().get_or_create_user_api()
+        cls.username = cls.user.username
+
+    def setUp(self):
+        patcher = mock.patch.object(IndividualConfig, 'group_json_ext_keys_copied_from_head', [], create=True)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.head = create_individual(self.username, {'first_name': 'Head', 'json_ext': self.head_keys})
+        self.group = create_group(self.username, {'json_ext': dict(self.household_keys)})
+        self.head_link = add_individual_to_group(self.username, self.head, self.group, is_head=True)
+
+    def group_json_ext(self):
+        self.group.refresh_from_db()
+        return self.group.json_ext
+
+    def assert_household_keys_only(self, json_ext):
+        for key, value in self.household_keys.items():
+            self.assertEqual(json_ext.get(key), value, key)
+        for key in ('ci', 'telephone'):
+            self.assertNotIn(key, json_ext)
+
+    def test_the_head_link_copies_nothing(self):
+        json_ext = self.group_json_ext()
+        self.assertEqual(json_ext['head_id'], str(self.head.id))
+        self.assert_household_keys_only(json_ext)
+
+    def test_member_removal_keeps_the_household_keys(self):
+        member = create_individual(self.username, {'first_name': 'Member'})
+        member_link = add_individual_to_group(self.username, member, self.group, is_head=False)
+        member_link.delete(username=self.username)
+
+        json_ext = self.group_json_ext()
+        self.assertNotIn(str(member.id), json_ext['members'])
+        self.assert_household_keys_only(json_ext)
+
+    def test_primary_recipient_replacement_keeps_the_household_keys(self):
+        self.head_link.refresh_from_db()
+        self.assertEqual(self.head_link.recipient_type, GroupIndividual.RecipientType.PRIMARY)
+        new_recipient = create_individual(
+            self.username, {'first_name': 'Recipient', 'json_ext': {'ci': '5/222/333/44'}})
+        new_link = GroupIndividual(
+            group_id=self.group.id, individual=new_recipient, role=GroupIndividual.Role.SPOUSE,
+            recipient_type=GroupIndividual.RecipientType.PRIMARY)
+        new_link.save(username=self.username)
+        self.head_link.refresh_from_db()
+        self.head_link.json_ext = {**(self.head_link.json_ext or {}), 'replaced': True}
+        self.head_link.save(username=self.username)
+
+        self.head_link.refresh_from_db()
+        self.assertIsNone(self.head_link.recipient_type)
+        json_ext = self.group_json_ext()
+        self.assertEqual(json_ext['primary_recipient_id'], str(new_recipient.id))
+        self.assertEqual(json_ext['head_id'], str(self.head.id))
+        self.assert_household_keys_only(json_ext)
+
+    def test_head_change_copies_nothing_from_the_new_head(self):
+        new_head = create_individual(
+            self.username, {'first_name': 'New head', 'json_ext': {'ci': '6/333/444/55', 'household_size': 9}})
+        add_individual_to_group(self.username, new_head, self.group, is_head=True)
+
+        self.head_link.refresh_from_db()
+        self.assertIsNone(self.head_link.role)
+        json_ext = self.group_json_ext()
+        self.assertEqual(json_ext['head_id'], str(new_head.id))
+        self.assert_household_keys_only(json_ext)
+
